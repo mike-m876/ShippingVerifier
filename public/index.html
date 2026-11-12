@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ShipCheck – revisión de documentos de embarque</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#eceff2;--surface:#fbfcfd;--ink:#17212b;--muted:#5d6b78;--line:#d3d9df;
+  --accent:#0e6b66;--accent-ink:#ffffff;
+  --pass:#1b7a43;--pass-bg:#e1f2e8;--warn:#9a5b00;--warn-bg:#fbeccd;--fail:#b3261e;--fail-bg:#fbe0dd;
+  --focus:#1d5fd1;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12181e;--surface:#1a222a;--ink:#e6ebf0;--muted:#97a4b1;--line:#2e3943;
+  --accent:#4fc3b9;--accent-ink:#06201e;
+  --pass:#6fd09a;--pass-bg:#173626;--warn:#f0b955;--warn-bg:#3b2d10;--fail:#ff8d84;--fail-bg:#40191a;--focus:#7fa9ff;}}
+:root[data-theme="dark"]{
+  --bg:#12181e;--surface:#1a222a;--ink:#e6ebf0;--muted:#97a4b1;--line:#2e3943;
+  --accent:#4fc3b9;--accent-ink:#06201e;
+  --pass:#6fd09a;--pass-bg:#173626;--warn:#f0b955;--warn-bg:#3b2d10;--fail:#ff8d84;--fail-bg:#40191a;--focus:#7fa9ff;}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:10}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+button{font:inherit;cursor:pointer}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:18px}
+h1{font:700 28px/1.1 "Bricolage Grotesque",system-ui,sans-serif;margin:0;letter-spacing:-.01em}
+header p{margin:4px 0 0;color:var(--muted);max-width:52ch}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px 14px}
+.stat b{display:block;font:700 24px/1.2 "Bricolage Grotesque",system-ui,sans-serif}
+.stat span{color:var(--muted);font-size:13px}
+.layout{display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px}
+.drop{margin:12px;border:2px dashed var(--line);border-radius:6px;padding:22px 14px;text-align:center;transition:border-color .15s,background .15s}
+.drop.over{border-color:var(--accent);background:var(--pass-bg)}
+.drop strong{display:block;margin-bottom:2px}
+.drop small{color:var(--muted)}
+.row{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:7px 12px;border-radius:5px;font-weight:500}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--fail)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.queue{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.queue li button{all:unset;box-sizing:border-box;display:block;width:100%;padding:11px 14px;border-bottom:1px solid var(--line);cursor:pointer}
+.queue li button:hover{background:var(--bg)}
+.queue li button:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
+.queue li.sel button{background:var(--bg);box-shadow:inset 3px 0 0 var(--accent)}
+.queue .n{font-weight:600;overflow-wrap:anywhere}
+.queue .m{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:13px;margin-top:2px}
+.badge{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;font-weight:600}
+.b-pass{background:var(--pass-bg);color:var(--pass)}.b-warn{background:var(--warn-bg);color:var(--warn)}
+.b-fail{background:var(--fail-bg);color:var(--fail)}.b-wait{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+.empty{padding:40px 20px;text-align:center;color:var(--muted)}
+.empty h2{font:600 18px "Bricolage Grotesque",system-ui,sans-serif;color:var(--ink);margin:0 0 6px}
+.dhead{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line)}
+.dhead h2{font:700 20px/1.2 "Bricolage Grotesque",system-ui,sans-serif;margin:0;overflow-wrap:anywhere}
+.dhead p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.stamp{align-self:center;border:3px solid currentColor;border-radius:6px;padding:2px 12px;font:700 15px "Bricolage Grotesque",system-ui,sans-serif;transform:rotate(-4deg);letter-spacing:.04em}
+.s-pass{color:var(--pass)}.s-warn{color:var(--warn)}.s-fail{color:var(--fail)}.s-wait{color:var(--muted)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.col{padding:16px 18px;min-width:0}
+.col+.col{border-left:1px solid var(--line)}
+h3{font:600 15px "Bricolage Grotesque",system-ui,sans-serif;margin:0 0 10px}
+.f{display:grid;grid-template-columns:130px 1fr auto;gap:8px;align-items:center;margin-bottom:8px}
+.f label{color:var(--muted);font-size:13px}
+.f input{width:100%;min-width:0;padding:6px 8px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);font:500 14px/1.3 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.f.low input{border-color:var(--warn);background:var(--warn-bg)}
+.conf{font-size:12px;color:var(--muted);min-width:34px;text-align:right}
+.f.low .conf{color:var(--warn);font-weight:600}
+.checks{list-style:none;margin:0;padding:0}
+.checks li{display:grid;grid-template-columns:22px 1fr;gap:8px;padding:9px 0;border-bottom:1px solid var(--line)}
+.checks li:last-child{border:0}
+.ic{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700}
+.checks b{display:block;font-weight:600;font-size:14px}.checks span{color:var(--muted);font-size:13px}
+.actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;padding:14px 18px;border-top:1px solid var(--line)}
+.proc{padding:50px 20px;text-align:center;color:var(--muted)}
+.bar{height:4px;background:var(--line);border-radius:2px;margin:14px auto 0;max-width:260px;overflow:hidden}
+.bar i{display:block;height:100%;width:40%;background:var(--accent);animation:slide 1s ease-in-out infinite}
+@keyframes slide{0%{margin-left:-40%}100%{margin-left:100%}}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:6px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.on{opacity:1}
+.since{color:var(--muted);font-size:13px;margin:-6px 0 16px}
+.log{border-top:1px solid var(--line);padding:16px 18px}
+.log ul{list-style:none;margin:0;padding:0;max-height:200px;overflow:auto}
+.log li{display:grid;grid-template-columns:120px 1fr;gap:10px;padding:5px 0;font-size:13px}
+.log time{color:var(--muted)}
+.log span{overflow-wrap:anywhere}
+@media(max-width:860px){.layout{grid-template-columns:1fr}.cols{grid-template-columns:1fr}.col+.col{border-left:0;border-top:1px solid var(--line)}.stats{grid-template-columns:repeat(2,1fr)}}
+@media(prefers-reduced-motion:reduce){.bar i{animation:none;width:100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>ShipCheck</h1>
+      <p>Sube documentos de embarque. Revisa lo que se extrajo, corrige lo que esté mal y aprueba solo lo que pase las validaciones.</p>
+    </div>
+  </header>
+  <section class="stats" aria-label="Resumen">
+    <div class="stat"><b id="s-total">0</b><span>Documentos</span></div>
+    <div class="stat"><b id="s-clean">0</b><span>Pasaron todas las validaciones</span></div>
+    <div class="stat"><b id="s-flag">0</b><span>Pendientes de revisión</span></div>
+    <div class="stat"><b id="s-appr">0</b><span>Aprobados</span></div>
+  </section>
+  <p class="since" id="since"></p>
+  <div class="layout">
+    <aside class="panel">
+      <div class="drop" id="drop">
+        <strong>Arrastra tus documentos aquí</strong>
+        <small>PDF, JPG o PNG. Conocimientos de embarque, listas de empaque, facturas comerciales.</small>
+        <div class="row">
+          <button class="btn primary" id="pick">Elegir archivos</button>
+        </div>
+        <input type="file" id="file" accept=".pdf,.jpg,.jpeg,.png" multiple hidden>
+      </div>
+      <ul class="queue" id="queue"></ul>
+    </aside>
+    <main class="panel" id="detail" aria-live="polite"></main>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+/* ---------- Backend connection ----------
+   analyzeDocument sends the file to the Express server, which calls the OpenAI API
+   and returns {type, fields, expected}. The API key lives only on the server. */
+const API_URL='/api/analyze';
+async function analyzeDocument(file,reviewId){
+  const fd=new FormData();
+  if(reviewId)fd.append('reviewId',reviewId);
+  fd.append('file',file);
+  let res;
+  try{res=await fetch(API_URL,{method:'POST',body:fd});}
+  catch(e){throw new Error('No se pudo conectar con el servidor. ¿Está en ejecución?');}
+  if(!res.ok){
+    let msg='El análisis falló.';
+    try{msg=(await res.json()).error||msg;}catch(e){}
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+/* ---------- Validation rules (run live as the reviewer edits fields) ---------- */
+const val=(d,k)=>(d.fields.find(f=>f.key===k)||{}).value||'';
+const RULES=[
+ {name:'Campos obligatorios completos',run:d=>{
+   const miss=d.fields.filter(f=>!String(f.value).trim()).map(f=>f.label);
+   return miss.length?['fail','Faltan: '+miss.join(', ')+'.']:['pass','Los 10 campos están presentes.'];}},
+ {name:'La referencia de PO coincide con el pedido',run:d=>{
+   const v=val(d,'po').trim();
+   if(!d.expected.po)return['warn','No hay un pedido registrado con este número de PO.'];
+   return v===d.expected.po?['pass','Coincide con '+d.expected.po+'.']:['fail','El documento dice '+(v||'nada')+', el pedido dice '+d.expected.po+'.'];}},
+ {name:'El peso coincide con el pedido',run:d=>{
+   const w=parseFloat(String(val(d,'weight')).replace(/,/g,'')),e=d.expected.weight;
+   if(isNaN(w))return['fail','El peso no es un número.'];
+   if(e==null)return['warn','No hay un pedido registrado con qué comparar.'];
+   const p=Math.abs(w-e)/e*100;
+   return p<=0.5?['pass','Dentro del 0.5% de '+e+' kg.']:p<=2?['warn',p.toFixed(1)+'% de diferencia con los '+e+' kg esperados.']:['fail',p.toFixed(1)+'% de diferencia con los '+e+' kg esperados (la tolerancia es 2%).'];}},
+ {name:'El valor declarado coincide con la factura',run:d=>{
+   const v=parseFloat(String(val(d,'value')).replace(/,/g,''));
+   if(d.expected.value==null)return['warn','No hay un pedido registrado con qué comparar.'];
+   return v===d.expected.value?['pass','Coincide con el total de la factura.']:['fail','El documento dice '+(isNaN(v)?'nada':v)+', la factura dice '+d.expected.value+'.'];}},
+ {name:'La llegada es posterior a la fecha de embarque',run:d=>{
+   const a=new Date(val(d,'ship')),b=new Date(val(d,'eta'));
+   if(isNaN(a)||isNaN(b))return['fail','No se puede leer una de las fechas.'];
+   return b>a?['pass','El tránsito es de '+Math.round((b-a)/864e5)+' días.']:['fail','La llegada es igual o anterior a la fecha de embarque.'];}},
+ {name:'El código HS tiene una longitud válida',run:d=>{
+   const v=val(d,'hs').replace(/\D/g,'');
+   return v.length>=6&&v.length<=10?['pass','El código HS parece válido.']:['fail','Los códigos HS tienen de 6 a 10 dígitos; este tiene '+v.length+'.'];}},
+ {name:'La confianza de lectura es suficiente',run:d=>{
+   const low=d.fields.filter(f=>f.conf<80&&!f.edited);
+   return low.length?['warn','Revisa '+low.map(f=>f.label).join(', ')+'; la lectura no fue segura.']:['pass','Todos los campos se leyeron con claridad.'];}}
+];
+const ICON={pass:['✓','b-pass'],warn:['!','b-warn'],fail:['✕','b-fail']};
+
+/* ---------- State ---------- */
+let docs=[],sel=null,uid=0;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function checks(d){return RULES.map(r=>{const[s,m]=r.run(d);return{name:r.name,s,m};});}
+function status(d){
+  if(d.state==='processing')return['wait','Leyendo…'];
+  if(d.decision==='approved')return['pass','Aprobado'];
+  if(d.decision==='rejected')return['fail','Rechazado'];
+  const c=checks(d);
+  if(c.some(x=>x.s==='fail'))return['fail','Requiere revisión'];
+  if(c.some(x=>x.s==='warn'))return['warn','Revisar advertencias'];
+  return['pass','Listo para aprobar'];
+}
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),1800);}
+
+const LABELS={bol:'Número de BOL',shipper:'Embarcador',consignee:'Consignatario',po:'Referencia de PO',ship:'Fecha de embarque',eta:'Llegada estimada',dest:'Destino',weight:'Peso bruto (kg)',value:'Valor declarado (USD)',hs:'Código HS'};
+/* Older saved reviews were stored in English; these maps show them in Spanish too. */
+const EN={'BOL number':'bol','Shipper':'shipper','Consignee':'consignee','PO reference':'po','Ship date':'ship','Estimated arrival':'eta','Destination':'dest','Gross weight (kg)':'weight','Declared value (USD)':'value','HS code':'hs'};
+const TYPES={'Bill of lading':'Conocimiento de embarque','Packing list':'Lista de empaque','Commercial invoice':'Factura comercial','Other':'Otro'};
+const LOGMAP={'Analyzed':'Analizado','Analyzed again':'Analizado de nuevo','Approved':'Aprobado','Rejected':'Rechazado','Decision cleared':'Decisión anulada'};
+const logAction=a=>LOGMAP[a]||a.replace(/^Edited (.+)$/,(_,l)=>'Editado '+(LABELS[EN[l]]||l));
+const logDetail=t=>t.split('(empty)').join('(vacío)');
+function normalize(d){
+  if(d.fields)d.fields.forEach(f=>{f.label=LABELS[f.key]||f.label;});
+  d.type=TYPES[d.type]||d.type;return d;
+}
+const fmt=iso=>iso?new Date(iso).toLocaleString('es-MX',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+async function api(method,url,body){
+  const res=await fetch(url,{method,headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined,keepalive:!!body});
+  if(!res.ok){let m='La solicitud falló.';try{m=(await res.json()).error||m;}catch(e){}throw new Error(m);}
+  return res.json();
+}
+/* Saves the current fields and decision to data/reviews.json through the server. */
+function saveDoc(d){
+  clearTimeout(d.saveT);d.dirty=false;
+  return api('PATCH','/api/reviews/'+d.id,{fields:d.fields.map(f=>({key:f.key,value:f.value})),decision:d.decision||null})
+    .then(r=>{d.log=r.log;if(sel===d.id&&$('log'))renderLog(d);})
+    .catch(e=>toast('No se pudo guardar: '+e.message));
+}
+
+/* ---------- Rendering ---------- */
+function renderStats(){
+  const done=docs.filter(d=>d.state==='done');
+  $('s-total').textContent=docs.length;
+  $('s-clean').textContent=done.filter(d=>checks(d).every(c=>c.s==='pass')).length;
+  $('s-flag').textContent=done.filter(d=>!d.decision&&checks(d).some(c=>c.s!=='pass')).length;
+  $('s-appr').textContent=done.filter(d=>d.decision==='approved').length;
+  const first=done.map(d=>d.createdAt).filter(Boolean).sort()[0];
+  $('since').textContent=first?'Historial desde el '+new Date(first).toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'})+' · '+done.length+(done.length===1?' revisión guardada':' revisiones guardadas'):'Aún no hay revisiones guardadas.';
+}
+function renderQueue(){
+  $('queue').innerHTML=[...docs].reverse().map(d=>{const[k,t]=status(d);
+    return `<li class="${d.id===sel?'sel':''}"><button data-id="${d.id}"><div class="n">${esc(d.name)}</div><div class="m"><span>${d.type?esc(d.type)+' · '+fmt(d.createdAt):'Leyendo archivo'}</span><span class="badge b-${k}">${t}</span></div></button></li>`}).join('');
+  renderStats();
+}
+function renderChecks(d){
+  const c=checks(d);
+  $('checks').innerHTML=c.map(x=>`<li><span class="ic ${ICON[x.s][1]}">${ICON[x.s][0]}</span><div><b>${esc(x.name)}</b><span>${esc(x.m)}</span></div></li>`).join('');
+  const[k,t]=status(d);
+  $('stamp').className='stamp s-'+k;$('stamp').textContent=t.toUpperCase();
+  const issues=c.filter(x=>x.s!=='pass').length;
+  $('approve').disabled=d.decision==='approved';
+  $('approve').textContent=issues&&!d.decision?'Aprobar de todos modos':'Aprobar';
+  $('issues').textContent=issues?issues+(issues>1?' validaciones requieren':' validación requiere')+' tu atención.':'Todas las validaciones pasaron.';
+}
+function renderDetail(){
+  const d=docs.find(x=>x.id===sel),m=$('detail');
+  if(!d){m.innerHTML=`<div class="empty"><h2>Ningún documento seleccionado</h2>Arrastra un documento de embarque a la izquierda para iniciar una revisión.</div>`;return;}
+  if(d.state==='processing'){m.innerHTML=`<div class="proc"><b>Leyendo ${esc(d.name)}</b><div>Extrayendo campos y ejecutando validaciones.</div><div class="bar"><i></i></div></div>`;return;}
+  m.innerHTML=`<div class="dhead"><div><h2>${esc(d.name)}</h2><p>${esc(d.type)} · <span id="issues"></span></p></div><div class="stamp" id="stamp"></div></div>
+  <div class="cols"><div class="col"><h3>Campos extraídos</h3>${d.fields.map(f=>`<div class="f ${f.conf<80&&!f.edited?'low':''}" id="f-${f.key}"><label for="i-${f.key}">${esc(f.label)}</label><input id="i-${f.key}" data-k="${f.key}" value="${esc(f.value)}" autocomplete="off"><span class="conf">${f.edited?'editado':f.conf+'%'}</span></div>`).join('')}</div>
+  <div class="col"><h3>Validaciones</h3><ul class="checks" id="checks"></ul></div></div>
+  <div class="log"><h3>Actividad</h3><ul id="log"></ul></div>
+  <div class="actions"><button class="btn danger" id="reject">Rechazar</button>${d.file?'<button class="btn" id="rerun">Leer de nuevo</button>':''}<button class="btn primary" id="approve">Aprobar</button></div>`;
+  renderChecks(d);renderLog(d);
+}
+function renderLog(d){
+  $('log').innerHTML=(d.log||[]).slice().reverse().map(l=>`<li><time>${fmt(l.at)}</time><span><b>${esc(logAction(l.action))}</b>${l.detail?' '+esc(logDetail(l.detail)):''}</span></li>`).join('');
+}
+
+/* ---------- Actions ---------- */
+async function addFile(file){
+  const d={id:'tmp'+(++uid),name:file.name,state:'processing',file},tmp=d.id;
+  docs.push(d);sel=d.id;renderQueue();renderDetail();
+  try{
+    Object.assign(d,await analyzeDocument(file),{state:'done'});normalize(d);
+    if(sel===tmp)sel=d.id;
+  }catch(e){
+    docs=docs.filter(x=>x!==d);if(sel===d.id)sel=null;toast(e.message);
+  }
+  renderQueue();renderDetail();
+}
+function addFiles(list){[...list].forEach(addFile);}
+$('pick').onclick=()=>$('file').click();
+$('file').onchange=e=>{addFiles(e.target.files);e.target.value='';};
+const drop=$('drop');
+['dragenter','dragover'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop',e=>addFiles(e.dataTransfer.files));
+$('queue').onclick=e=>{const b=e.target.closest('button');if(!b)return;sel=b.dataset.id;renderQueue();renderDetail();};
+$('detail').addEventListener('input',e=>{
+  const k=e.target.dataset.k;if(!k)return;
+  const d=docs.find(x=>x.id===sel),f=d.fields.find(x=>x.key===k);
+  f.value=e.target.value;f.edited=true;d.decision=null;
+  const row=$('f-'+k);row.classList.remove('low');row.querySelector('.conf').textContent='editado';
+  renderChecks(d);renderQueue();
+  d.dirty=true;clearTimeout(d.saveT);d.saveT=setTimeout(()=>saveDoc(d),700);
+});
+$('detail').addEventListener('click',e=>{
+  const d=docs.find(x=>x.id===sel);if(!d)return;
+  if(e.target.id==='approve'){d.decision='approved';saveDoc(d);toast('Aprobado: '+d.name);}
+  else if(e.target.id==='reject'){d.decision='rejected';saveDoc(d);toast('Rechazado: '+d.name);}
+  else if(e.target.id==='rerun'){d.state='processing';d.decision=null;renderQueue();renderDetail();
+    analyzeDocument(d.file,d.id).then(r=>{Object.assign(d,r);normalize(d);}).catch(err=>toast(err.message)).finally(()=>{d.state='done';renderQueue();if(sel===d.id)renderDetail();});return;}
+  else return;
+  renderChecks(d);renderQueue();
+});
+addEventListener('pagehide',()=>docs.forEach(d=>{if(d.dirty)saveDoc(d);}));
+(async()=>{
+  try{
+    docs=(await api('GET','/api/reviews')).map(r=>normalize({...r,state:'done'}));
+    sel=docs.length?docs[docs.length-1].id:null;
+  }catch(e){toast('No se pudieron cargar las revisiones guardadas: '+e.message);}
+  renderQueue();renderDetail();
+})();
+</script>
+</body>
+</html>
