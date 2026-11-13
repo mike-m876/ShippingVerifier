@@ -1,3 +1,5 @@
+https://youtu.be/-g5phNVGouw link al video explicativo
+
 ## 1. ¿Qué problema elegiste y por qué?
 
 El problema seleccionado fue la revisión de documentos de embarque. Este proceso suele realizarse manualmente, lo que implica revisar cada documento individualmente y comparar sus campos para verificar que la información esté completa y sea correcta. Debido al volumen de documentos y al tiempo que requiere esta actividad, existe la posibilidad de cometer errores humanos que pueden ocasionar retrasos en los procesos logísticos e incluso generar conflictos durante los procedimientos aduaneros.
